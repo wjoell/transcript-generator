@@ -4,3 +4,4 @@
 .LSOverride
 __pycache__/
 .pytest_cache/
+IMPLEMENTATION_GUIDE.md

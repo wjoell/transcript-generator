@@ -43,8 +43,12 @@ class TestCommandLineInterface(unittest.TestCase):
     @patch("whisper_transcribe.validate_output_dir")
     @patch("whisper_transcribe.validate_model")
     @patch("whisper_transcribe.transcribe_audio")
+    @patch("whisper_transcribe.validate_diarization_options", return_value=True)
+    @patch("sys.exit")
     def test_main_function(
         self,
+        mock_exit,
+        mock_validate_diarization,
         mock_transcribe,
         mock_validate_model,
         mock_validate_output,
@@ -63,6 +67,12 @@ class TestCommandLineInterface(unittest.TestCase):
         mock_args.word_timestamps = False
         mock_args.quiet = False
         mock_args.dry_run = False
+        # Add diarization options
+        mock_args.diarize = False
+        mock_args.num_speakers = None
+        mock_args.min_speakers = None
+        mock_args.max_speakers = None
+        mock_args.parallel_diarize = False
         mock_parse_args.return_value = mock_args
 
         # All validation functions return True
@@ -80,6 +90,7 @@ class TestCommandLineInterface(unittest.TestCase):
         mock_validate_file.assert_called_once_with(self.test_audio_file, True)
         mock_validate_output.assert_called_once_with("./", True)
         mock_validate_model.assert_called_once_with("medium", True)
+        mock_validate_diarization.assert_not_called()  # Since diarize=False
 
         # Check that transcribe_audio was called with the right arguments
         mock_transcribe.assert_called_once_with(
@@ -90,6 +101,11 @@ class TestCommandLineInterface(unittest.TestCase):
             output_formats=["txt"],
             word_timestamps=False,
             verbose=True,
+            diarize=False,
+            num_speakers=None,
+            min_speakers=None,
+            max_speakers=None,
+            parallel_diarize=False,
         )
 
     @patch("argparse.ArgumentParser.parse_args")
@@ -98,8 +114,12 @@ class TestCommandLineInterface(unittest.TestCase):
     @patch("whisper_transcribe.validate_output_dir")
     @patch("whisper_transcribe.validate_model")
     @patch("whisper_transcribe.transcribe_audio")
+    @patch("whisper_transcribe.validate_diarization_options", return_value=True)
+    @patch("sys.exit")
     def test_main_with_options(
         self,
+        mock_exit,
+        mock_validate_diarization,
         mock_transcribe,
         mock_validate_model,
         mock_validate_output,
@@ -118,6 +138,12 @@ class TestCommandLineInterface(unittest.TestCase):
         mock_args.word_timestamps = True
         mock_args.quiet = True
         mock_args.dry_run = False
+        # Add diarization options
+        mock_args.diarize = False
+        mock_args.num_speakers = None
+        mock_args.min_speakers = None
+        mock_args.max_speakers = None
+        mock_args.parallel_diarize = False
         mock_parse_args.return_value = mock_args
 
         # All validation functions return True
@@ -154,6 +180,7 @@ class TestCommandLineInterface(unittest.TestCase):
         mock_validate_file.assert_called_once_with(self.test_audio_file, False)
         mock_validate_output.assert_called_once_with(self.test_output_dir, False)
         mock_validate_model.assert_called_once_with("large-v2", False)
+        mock_validate_diarization.assert_not_called()  # Since diarize=False
 
         # Check that transcribe_audio was called with the right arguments
         mock_transcribe.assert_called_once_with(
@@ -164,6 +191,11 @@ class TestCommandLineInterface(unittest.TestCase):
             output_formats=["txt", "srt", "json"],
             word_timestamps=True,
             verbose=False,
+            diarize=False,
+            num_speakers=None,
+            min_speakers=None,
+            max_speakers=None,
+            parallel_diarize=False,
         )
 
     @patch("argparse.ArgumentParser.parse_args")
@@ -199,7 +231,7 @@ class TestCommandLineInterface(unittest.TestCase):
 
         # Check that sys.exit was called with code 1 (error)
         mock_exit.assert_called_once_with(1)
-        
+
         # Verify that transcribe_audio was not called
         mock_transcribe.assert_not_called()
 
@@ -238,7 +270,7 @@ class TestCommandLineInterface(unittest.TestCase):
         mock_validate_file.return_value = True
         mock_validate_output.return_value = True
         mock_validate_model.return_value = True
-        
+
         # Set up mock_exit to simulate program exit by raising an exception
         mock_exit.side_effect = SystemExit(0)
 
