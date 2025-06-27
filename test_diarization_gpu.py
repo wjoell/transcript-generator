@@ -100,7 +100,6 @@ def test_diarization_gpu():
             output_dir="./test_output",
             output_formats=["txt", "json"],
             num_speakers=2,  # We created 2 "speakers" in the test audio
-            verbose=True,
         )
 
         end_time = time.time()
@@ -128,9 +127,10 @@ def test_faster_whisper_integration():
         from faster_whisper import WhisperModel
         import torch
 
-        # Test device selection
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-        compute_type = "int8" if device == "cpu" or device == "mps" else "float16"
+        # Test device selection - Faster Whisper doesn't support MPS directly
+        # It will fall back to CPU but still be optimized
+        device = "cpu"  # Faster Whisper doesn't support MPS directly
+        compute_type = "int8"  # Best for Apple Silicon performance
 
         print(f"Device: {device}")
         print(f"Compute type: {compute_type}")

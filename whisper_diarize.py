@@ -162,12 +162,13 @@ class WhisperDiarizer:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Prepare command arguments
             script_path = "diarize_parallel.py" if use_parallel else "diarize.py"
+            script_full_path = f"whisper-diarization/{script_path}"
             cmd = [
                 "python",
-                str(diarize_dir / script_path),
+                script_full_path,
                 "-a",
                 file_path,
-                "--model-name",
+                "--whisper-model",
                 model_name,
             ]
 
@@ -181,15 +182,6 @@ class WhisperDiarizer:
             if language:
                 cmd.extend(["--language", language])
 
-            if num_speakers:
-                cmd.extend(["--num-speakers", str(num_speakers)])
-
-            if min_speakers:
-                cmd.extend(["--min-speakers", str(min_speakers)])
-
-            if max_speakers:
-                cmd.extend(["--max-speakers", str(max_speakers)])
-
             if not self.verbose:
                 cmd.append("--quiet")
 
@@ -197,9 +189,7 @@ class WhisperDiarizer:
             if self.verbose:
                 logger.info(f"Running diarization with command: {' '.join(cmd)}")
 
-            process = subprocess.run(
-                cmd, cwd=str(diarize_dir), capture_output=True, text=True
-            )
+            process = subprocess.run(cmd, capture_output=True, text=True)
 
             if process.returncode != 0:
                 logger.error(f"Diarization failed with error: {process.stderr}")
