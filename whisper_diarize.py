@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 whisper_diarize.py - Module for transcription with speaker diarization using whisper-diarization
+Optimized for Apple Silicon with MPS support
 """
 
 import os
@@ -16,9 +17,35 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
+def get_optimal_device():
+    """
+    Get the optimal device for inference on Apple Silicon
+
+    Returns:
+        str: Device string ('mps', 'cuda', or 'cpu')
+    """
+    try:
+        import torch
+
+        # Check for CUDA first (for external GPUs)
+        if torch.cuda.is_available():
+            return "cuda"
+
+        # Check for Apple Silicon MPS
+        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+            return "mps"
+
+        # Fall back to CPU
+        return "cpu"
+
+    except ImportError:
+        return "cpu"
+
+
 class WhisperDiarizer:
     """
     Class to handle speaker diarization with Whisper
+    Optimized for Apple Silicon with MPS support
     """
 
     def __init__(self, verbose=True):
@@ -29,6 +56,7 @@ class WhisperDiarizer:
             verbose (bool): Whether to print progress information
         """
         self.verbose = verbose
+        self.device = get_optimal_device()
 
         # Check if whisper-diarization is installed/cloned
         self.whisper_diarization_path = self._get_whisper_diarization_path()
@@ -142,6 +170,12 @@ class WhisperDiarizer:
                 "--model-name",
                 model_name,
             ]
+
+            # Add device optimization for Apple Silicon
+            if self.device != "cpu":
+                cmd.extend(["--device", self.device])
+                if self.verbose:
+                    logger.info(f"Using {self.device.upper()} device for diarization")
 
             # Add optional arguments
             if language:

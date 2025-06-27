@@ -40,6 +40,34 @@ def validate_environment(verbose=True):
             logger.info(f"✓ CUDA available: {torch.cuda.is_available()}")
             if torch.cuda.is_available():
                 logger.info(f"✓ CUDA device: {torch.cuda.get_device_name(0)}")
+
+            # Apple Silicon MPS support
+            logger.info(
+                f"✓ MPS (Apple Silicon) available: {torch.backends.mps.is_available()}"
+            )
+            logger.info(f"✓ MPS built: {torch.backends.mps.is_built()}")
+
+            if torch.backends.mps.is_available():
+                logger.info("✓ Apple Silicon GPU acceleration is available!")
+                # Test MPS device creation
+                try:
+                    device = torch.device("mps")
+                    test_tensor = torch.randn(1, 1).to(device)
+                    logger.info("✓ MPS device test successful")
+                except Exception as e:
+                    logger.warning(f"⚠ MPS device test failed: {e}")
+                    logger.info("✓ Falling back to CPU")
+
+            # Check for accelerate library
+            try:
+                import accelerate
+
+                logger.info(f"✓ Accelerate library available: {accelerate.__version__}")
+            except ImportError:
+                logger.info(
+                    "ℹ Accelerate library not found (optional for optimization)"
+                )
+
     except ImportError:
         logger.error("✗ Error: PyTorch is not installed")
         return False
@@ -262,6 +290,53 @@ def validate_diarization_options(
     return True
 
 
+def get_optimal_device(verbose=True):
+    """
+    Get the optimal device for inference on Apple Silicon
+    Handles MPS compatibility issues gracefully
+
+    Returns:
+        str: Device string ('mps', 'cuda', or 'cpu')
+    """
+    try:
+        import torch
+
+        # Check for CUDA first (for external GPUs)
+        if torch.cuda.is_available():
+            if verbose:
+                logger.info("✓ Using CUDA GPU acceleration")
+            return "cuda"
+
+        # Check for Apple Silicon MPS
+        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+            # Test MPS compatibility with a simple operation
+            try:
+                device = torch.device("mps")
+                test_tensor = torch.randn(1, 1).to(device)
+                # Test a more complex operation that might fail
+                test_result = torch.matmul(test_tensor, test_tensor.T)
+                if verbose:
+                    logger.info("✓ Using Apple Silicon MPS GPU acceleration")
+                return "mps"
+            except Exception as e:
+                if verbose:
+                    logger.warning(
+                        f"⚠ MPS compatibility test failed: {str(e)[:100]}..."
+                    )
+                    logger.info("ℹ Falling back to CPU for better compatibility")
+                return "cpu"
+
+        # Fall back to CPU
+        if verbose:
+            logger.info("ℹ Using CPU (no GPU acceleration available)")
+        return "cpu"
+
+    except ImportError:
+        if verbose:
+            logger.warning("⚠ PyTorch not available, using CPU")
+        return "cpu"
+
+
 def transcribe_audio(
     file_path,
     model_name="medium",
@@ -324,8 +399,22 @@ def transcribe_audio(
     if verbose:
         logger.info(f"Loading model: {model_name}")
 
-    # Load the model
+    # Get optimal device for Apple Silicon
+    device = get_optimal_device(verbose)
+
+    # Load the model with device optimization
     model = whisper.load_model(model_name)
+
+    # Move model to optimal device if possible
+    if device != "cpu":
+        try:
+            model = model.to(device)
+            if verbose:
+                logger.info(f"✓ Model loaded on {device.upper()} device")
+        except Exception as e:
+            if verbose:
+                logger.warning(f"⚠ Could not move model to {device}: {e}")
+                logger.info("ℹ Continuing with CPU")
 
     if verbose:
         logger.info(f"Transcribing: {file_path}")

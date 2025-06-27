@@ -1,4 +1,4 @@
-# requirements.txt for Whisper transcription
+# requirements.txt for Whisper transcription with Apple Silicon optimization
 openai-whisper>=20230918
 torch>=2.0.0
 torchaudio>=2.0.0
@@ -12,3 +12,13 @@ nemo-toolkit>=1.20.0
 ctc-segmentation>=1.7.4
 pyannote.audio>=3.0.0
 demucs>=4.0.0
+
+# Apple Silicon optimizations
+# Note: Install PyTorch with MPS support for Apple Silicon
+# pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+# For better performance, consider using conda or mamba:
+# conda install pytorch torchaudio -c pytorch
+
+# Additional optimizations for Apple Silicon
+accelerate>=0.20.0  # For better model loading and inference
+transformers>=4.30.0  # For advanced model support
